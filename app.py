@@ -1,12 +1,12 @@
-# app.py — TCMB Kur Çekim Otomasyonu (Tkinter)
-# Gerekli: pip install tkcalendar pandas openpyxl requests
-
+# app.py — Modernize Edilmiş Arayüz + Icon
 import os
 import json
 import threading
 import time
 import datetime as dt
+import tkinter as tk
 from tkinter import Tk, ttk, StringVar, BooleanVar, filedialog, messagebox, IntVar
+from tkinter import font as tkfont
 from tkcalendar import DateEntry
 import requests
 import pandas as pd
@@ -152,7 +152,29 @@ class App:
     def __init__(self, master: Tk):
         self.m = master
         self.m.title(APP_TITLE)
-        self.m.geometry("980x640")
+        self.m.geometry("1000x680")
+        self.m.configure(bg="#F7F9FC")
+
+        # Uygulama ikonu
+        try:
+            self.m.iconbitmap(r"C:\Users\user\Desktop\TCMB_Data\kurflow.ico")
+        except Exception:
+            pass
+
+        # DPI & ölçekleme ve fontları büyüt
+        try:
+            # Genel scaling (1.20 ~ %120)
+            self.m.tk.call("tk", "scaling", 1.8)
+        except Exception:
+            pass
+
+        base = tkfont.nametofont("TkDefaultFont")
+        base.configure(family="Segoe UI", size=10)
+        tkfont.nametofont("TkTextFont").configure(family="Segoe UI", size=10)
+        tkfont.nametofont("TkHeadingFont").configure(family="Segoe UI", size=11, weight="bold")
+
+        # Tema/stil
+        self._init_style()
 
         self.start_date = dt.date(dt.date.today().year, 1, 1)
         self.end_date   = dt.date.today()
@@ -170,71 +192,137 @@ class App:
         self._build_ui()
         self._load_from_file()
 
+    def _init_style(self):
+        primary = "#2563EB"   # mavi
+        bg      = "#F7F9FC"
+        white   = "#FFFFFF"
+        text    = "#0F172A"
+        subtext = "#475569"
+
+        style = ttk.Style(self.m)
+        try:
+            style.theme_use("clam")
+        except Exception:
+            pass
+
+        # Genel
+        style.configure(".", background=bg, foreground=text)
+
+        # Başlık barı
+        self.topbar = tk.Frame(self.m, bg=primary, height=56)
+        self.topbar.pack(side="top", fill="x")
+        tk.Label(self.topbar, text=APP_TITLE, fg=white, bg=primary,
+                 font=("Segoe UI Semibold", 13)).pack(side="left", padx=16, pady=10)
+
+        # Notebook
+        style.configure("TNotebook", background=bg, borderwidth=0)
+        style.configure("TNotebook.Tab", padding=(16, 10), font=("Segoe UI Semibold", 10))
+        style.map("TNotebook.Tab",
+                  background=[("selected", white), ("!selected", "#E9EEF7")],
+                  foreground=[("selected", text), ("!selected", text)])
+
+        # Kart görünümlü LabelFrame
+        style.configure("Card.TLabelframe", background=white, bordercolor="#E5E7EB", relief="solid", borderwidth=1)
+        style.configure("Card.TLabelframe.Label", background=white, foreground=text, font=("Segoe UI Semibold", 10))
+
+        # Etiketler
+        style.configure("Subtle.TLabel", background=bg, foreground=subtext)
+
+        # Butonlar
+        style.configure("TButton", padding=(12, 8), font=("Segoe UI", 10))
+        style.configure("Accent.TButton", background=primary, foreground=white, padding=(14, 9), font=("Segoe UI", 10, "bold"))
+        style.map("Accent.TButton",
+                  background=[("active", "#1D4ED8"), ("disabled", "#93C5FD")],
+                  foreground=[("disabled", "#F8FAFC")])
+
+        # Radio/Check
+        style.configure("TRadiobutton", background=white)
+        style.configure("TCheckbutton", background=white)
+
+        # Progressbar
+        style.configure("Primary.Horizontal.TProgressbar", troughcolor="#E5E7EB", background=primary, thickness=10)
+
+        # Entry/Combobox
+        style.configure("TEntry", fieldbackground=white)
+        style.configure("TCombobox", fieldbackground=white)
+
     def _build_ui(self):
-        nb = ttk.Notebook(self.m)
-        nb.pack(fill="both", expand=True, padx=10, pady=10)
+        container = ttk.Frame(self.m)
+        container.pack(fill="both", expand=True, padx=12, pady=12)
+
+        nb = ttk.Notebook(container)
+        nb.pack(fill="both", expand=True)
 
         frm_manual = ttk.Frame(nb)
-        nb.add(frm_manual, text="Manuel Veri Çekimi")
+        nb.add(frm_manual, text="Veri Çekimi")
 
-        # Tarih aralığı
-        grp_dates = ttk.LabelFrame(frm_manual, text="Tarih Aralığı")
-        grp_dates.pack(fill="x", padx=8, pady=8)
-        ttk.Label(grp_dates, text="Başlangıç:").pack(side="left", padx=6)
-        self.dp_start = DateEntry(grp_dates, date_pattern="dd.mm.yyyy")
+        # Tarih aralığı (Kart)
+        grp_dates = ttk.Labelframe(frm_manual, text="Tarih Aralığı", style="Card.TLabelframe")
+        grp_dates.pack(fill="x", padx=8, pady=(12, 8))
+        row_dates = ttk.Frame(grp_dates); row_dates.pack(fill="x", padx=10, pady=10)
+        ttk.Label(row_dates, text="Başlangıç:").pack(side="left", padx=(0, 8))
+        self.dp_start = DateEntry(row_dates, date_pattern="dd.mm.yyyy", width=14)
         self.dp_start.set_date(self.start_date)
-        self.dp_start.pack(side="left", padx=6)
-        ttk.Label(grp_dates, text="Bitiş:").pack(side="left", padx=6)
-        self.dp_end = DateEntry(grp_dates, date_pattern="dd.mm.yyyy")
+        self.dp_start.pack(side="left")
+        ttk.Label(row_dates, text="Bitiş:", padding=(16, 0)).pack(side="left")
+        self.dp_end = DateEntry(row_dates, date_pattern="dd.mm.yyyy", width=14)
         self.dp_end.set_date(self.end_date)
-        self.dp_end.pack(side="left", padx=6)
+        self.dp_end.pack(side="left")
 
-        # Döviz & Frekans
-        container = ttk.Frame(frm_manual)
-        container.pack(fill="both", expand=True, padx=8, pady=4)
+        # Döviz & Frekans (iki kart)
+        grid = ttk.Frame(frm_manual); grid.pack(fill="both", expand=True, padx=8, pady=4)
 
-        grp_fx = ttk.LabelFrame(container, text="Döviz Kurları")
-        grp_fx.pack(side="left", fill="both", expand=True, padx=(0,8))
-        left = ttk.Frame(grp_fx); left.pack(side="left", fill="both", expand=True, padx=6, pady=6)
-        right = ttk.Frame(grp_fx); right.pack(side="left", fill="both", expand=True, padx=6, pady=6)
+        grp_fx = ttk.Labelframe(grid, text="Döviz Kurları", style="Card.TLabelframe")
+        grp_fx.pack(side="left", fill="both", expand=True, padx=(0,8), pady=4)
+        inner_fx = ttk.Frame(grp_fx); inner_fx.pack(fill="both", expand=True, padx=10, pady=10)
+
+        left = ttk.Frame(inner_fx); left.pack(side="left", fill="both", expand=True, padx=(0,10))
+        right = ttk.Frame(inner_fx); right.pack(side="left", fill="both", expand=True)
+
         half = (len(ALL_CURRENCIES)+1)//2
         for c in ALL_CURRENCIES[:half]:
-            ttk.Checkbutton(left, text=c, variable=self.vars_currency[c]).pack(anchor="w")
+            ttk.Checkbutton(left, text=c, variable=self.vars_currency[c]).pack(anchor="w", pady=2)
         for c in ALL_CURRENCIES[half:]:
-            ttk.Checkbutton(right, text=c, variable=self.vars_currency[c]).pack(anchor="w")
-        btns_fx = ttk.Frame(grp_fx); btns_fx.pack(fill="x", pady=(6,2))
+            ttk.Checkbutton(right, text=c, variable=self.vars_currency[c]).pack(anchor="w", pady=2)
+
+        btns_fx = ttk.Frame(grp_fx); btns_fx.pack(fill="x", padx=10, pady=(6,10))
         ttk.Button(btns_fx, text="Tümü", command=self._select_all_currencies).pack(side="left", padx=4)
         ttk.Button(btns_fx, text="Hiçbiri", command=self._clear_all_currencies).pack(side="left", padx=4)
 
-        grp_freq = ttk.LabelFrame(container, text="Frekanslar")
-        grp_freq.pack(side="left", fill="both", expand=True)
+        grp_freq = ttk.Labelframe(grid, text="Frekanslar", style="Card.TLabelframe")
+        grp_freq.pack(side="left", fill="both", expand=True, padx=(8,0), pady=4)
+        inner_fr = ttk.Frame(grp_freq); inner_fr.pack(fill="both", expand=True, padx=10, pady=10)
+
         for f in FREQUENCIES:
-            ttk.Checkbutton(grp_freq, text=f, variable=self.var_freq[f], command=self._ensure_single_freq).pack(anchor="w")
-        ttk.Label(grp_freq, text="(Tek frekans seçilir)").pack(anchor="w", pady=(6,0))
-        btns_fr = ttk.Frame(grp_freq); btns_fr.pack(fill="x", pady=(6,2))
+            ttk.Checkbutton(inner_fr, text=f, variable=self.var_freq[f], command=self._ensure_single_freq).pack(anchor="w", pady=2)
+        ttk.Label(inner_fr, text="(Tek frekans seçilir)", style="Subtle.TLabel").pack(anchor="w", pady=(6,0))
+
+        btns_fr = ttk.Frame(grp_freq); btns_fr.pack(fill="x", padx=10, pady=(8,10))
         ttk.Button(btns_fr, text="Tümü", command=lambda: self._set_all_freq(True)).pack(side="left", padx=4)
         ttk.Button(btns_fr, text="Hiçbiri", command=lambda: self._set_all_freq(False)).pack(side="left", padx=4)
 
-        # Çıktı ve kayıt
-        grp_out = ttk.LabelFrame(frm_manual, text="Çıktı ve Kayıt")
+        # Çıktı ve kayıt (Kart)
+        grp_out = ttk.Labelframe(frm_manual, text="Çıktı ve Kayıt", style="Card.TLabelframe")
         grp_out.pack(fill="x", padx=8, pady=8)
-        ttk.Button(grp_out, text="Klasör Seç", command=self._choose_folder).pack(side="right", padx=6, pady=6)
-        ttk.Label(grp_out, textvariable=self.out_folder, foreground="#444").pack(side="left", padx=8)
+        row_out = ttk.Frame(grp_out); row_out.pack(fill="x", padx=10, pady=10)
+        ttk.Label(row_out, text="Kayıt Klasörü:").pack(side="left", padx=(0,8))
+        ttk.Label(row_out, textvariable=self.out_folder, style="Subtle.TLabel").pack(side="left", padx=(0,8))
+        ttk.Button(row_out, text="Klasör Seç", command=self._choose_folder).pack(side="right")
 
-        frm_fmt = ttk.Frame(frm_manual); frm_fmt.pack(fill="x", padx=8)
-        ttk.Label(frm_fmt, text="Format:").pack(side="left", padx=6)
+        frm_fmt = ttk.Frame(frm_manual); frm_fmt.pack(fill="x", padx=16, pady=(0,4))
+        ttk.Label(frm_fmt, text="Format:").pack(side="left", padx=(0,8))
         ttk.Radiobutton(frm_fmt, text="Excel (.xlsx)", variable=self.out_format, value="xlsx").pack(side="left", padx=4)
         ttk.Radiobutton(frm_fmt, text="CSV (.csv)", variable=self.out_format, value="csv").pack(side="left", padx=4)
 
         # Alt butonlar
-        btn_row = ttk.Frame(frm_manual); btn_row.pack(fill="x", padx=8, pady=12)
+        btn_row = ttk.Frame(frm_manual); btn_row.pack(fill="x", padx=16, pady=12)
         ttk.Button(btn_row, text="Ayarları Kaydet", command=self._save_to_file).pack(side="left")
-        ttk.Button(btn_row, text="Manuel Veri Çekimini Başlat", command=self._start_job).pack(side="right")
+        ttk.Button(btn_row, text="Veri Çekimini Başlat", style="Accent.TButton", command=self._start_job).pack(side="right")
 
         # İlerleme
-        pr = ttk.Frame(frm_manual); pr.pack(fill="x", padx=8, pady=(0,10))
-        self.pb = ttk.Progressbar(pr, orient="horizontal", mode="determinate", maximum=100)
-        self.pb.pack(fill="x")
+        pr = ttk.Frame(frm_manual); pr.pack(fill="x", padx=16, pady=(0,14))
+        self.pb = ttk.Progressbar(pr, orient="horizontal", mode="determinate", maximum=100, style="Primary.Horizontal.TProgressbar")
+        self.pb.pack(fill="x", pady=(0,6))
         ttk.Label(pr, textvariable=self.progress_txt).pack(anchor="w")
 
     # --- UI yardımcıları ---
